@@ -1,6 +1,8 @@
 import java.io.*;
 import java.net.*;
+import java.net.DatagramSocket;
 import java.util.Scanner;
+import java.io.BufferedReader;
 
 /*
 CIS 457
@@ -27,14 +29,18 @@ class Client{
 			System.exit(0);
 		}
 		
-		DatagramSocket socket = new DatagramSocket(ip_address, Integer.parseInt(port));	
+		DatagramSocket socket = new DatagramSocket();	
+		
+		socket.connect(InetAddress.getByName(ip_address), Integer.parseInt(port));
+		BufferedReader inFromUser = new BufferedReader(new InputStreamReader(System.in));
 
 		System.out.println("Enter a file name. -1 to exit: ");
+
 		String message = inFromUser.readLine();
 
 		byte[] sendData = message.getBytes();
 		DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length);
-		serverSocket.receive(sendPacket);
+		socket.send(sendPacket);
 
 		// the message received from the client
 		String receivedMessage = new String(sendData);
@@ -52,10 +58,9 @@ class Client{
 
 
 	//This method creates and manages the socket. 
-	public static void WebTransaction(Socket socket) throws IOException{
+/*	public static void WebTransaction(Socket socket) throws IOException{
 		DataInputStream in = new DataInputStream(socket.getInputStream());
 		PrintWriter out = new PrintWriter(socket.getOutputStream(), true);  
-		BufferedReader inFromUser = new BufferedReader(new InputStreamReader(System.in));
 		//instructions for the user to communicate to server, ie: enter file name.
 		// notify user if file does not exist
 		System.out.println("Enter a file name. -1 to exit: ");
