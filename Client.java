@@ -17,16 +17,18 @@ class Client{
 		//Prompt user for ip address
 		String ip_address, port;
 		Scanner input = new Scanner(System.in);
-		System.out.println("Enter an IP address, loopback address is 127.0.0.1");
-		ip_address = "127.0.0.1";//input.next();
-		System.out.println("Enter a port, default port is 9875");
-		port = "9875";//input.next();	
-
-		if(checkIP(ip_address) == true && checkPort(port) == true){
-
+		System.out.println("Enter an IP address, loopback address is 127.0.0.1, enter 'd' for default");
+		ip_address = "";
+		if(ip_address.equals("d")){
+		  ip_address = "127.0.0.1";
+		  port = "9876";
 		} else {
-			System.out.print("Not a valid ip address or port.");
-			System.exit(0);
+		  System.out.println("Enter a port, default port is 9876");
+		  port = input.next();
+		  if(checkIP(ip_address) != true || checkPort(port) != true){
+		    System.out.print("Not a valid ip address or port.");
+		    System.exit(0);
+		  }
 		}
 		
 		System.out.println("Enter a file name. -1 to exit: ");
