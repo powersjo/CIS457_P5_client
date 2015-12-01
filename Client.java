@@ -18,7 +18,7 @@ class Client{
 		String ip_address, port;
 		Scanner input = new Scanner(System.in);
 		System.out.println("Enter an IP address, loopback address is 127.0.0.1, enter 'd' for default");
-		ip_address = "";
+		ip_address = input.next();
 		if(ip_address.equals("d")){
 		  ip_address = "127.0.0.1";
 		  port = "9876";
