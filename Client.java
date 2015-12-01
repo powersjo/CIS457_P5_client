@@ -30,13 +30,12 @@ class Client{
 		    System.exit(0);
 		  }
 		}
-		
-		System.out.println("Enter a file name. -1 to exit: ");
-		String message = input.next();
+	System.out.println("Enter a file name. -1 to exit: ");
+		message = input.next();
 		
 		byte[] sendData = message.getBytes();
 		System.out.println(sendData);
-		DatagramSocket socket = new DatagramSocket();	
+		socket = new DatagramSocket();	
 		socket.connect(InetAddress.getByName(ip_address), Integer.parseInt(port));
 		
 		System.out.println(socket.isConnected());
@@ -47,16 +46,38 @@ class Client{
 			System.out.println(e.getStackTrace());
 		}
 		
-		
-		byte[] receiveData = new byte[1024]; 
-		DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length); 
-		socket.receive(receivePacket);
-		
-		String receivedMessage = new String(receiveData).trim();
-		
-		System.out.println(receivedMessage);
-		
-		socket.close();
+		Thread receiveThread = new Thread(){
+			public void run(){
+				System.out.println("Thread Running");
+				OutputStream fileOut = null;
+				try{
+					File file = new File ("Data/" + message);
+					fileOut = new FileOutputStream(file);
+					
+					while(socket.isConnected()){
+						byte[] receiveData = new byte[1024];
+						DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+						socket.receive(receivePacket);
+						fileOut.write(receiveData);
+						System.out.println("Packet Received");
+						byte[] sendData = new String("Packet Received").getBytes();
+						DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length);
+						socket.send(sendPacket);
+						if(new String(receiveData).contains("end-of-file")) {
+							//socket.close();
+						}
+					}
+					fileOut.close();
+					socket.close();
+					System.out.println("File transfered.");
+				} 
+				catch (Exception e){
+					//System.out.println(e.getMessage());	    
+				}
+			}
+		};
+			
+		receiveThread.start();
 	}
 	
 	/*
