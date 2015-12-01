@@ -12,6 +12,8 @@ Jonathan Powers, Kevin Anderson, Brett Greenman
  */
 //Client class to connect to a server. 
 class Client{
+	static DatagramSocket socket;
+	static String message;
 	//Main method that starts the client. 
 	public static void main(String args[]) throws Exception{
 		//Prompt user for ip address
