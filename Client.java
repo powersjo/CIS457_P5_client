@@ -6,7 +6,7 @@ import java.io.BufferedReader;
 
 /*
 CIS 457
-Project 1 part 2
+Project 4 part 2
 Java client server file transfer
 Jonathan Powers, Kevin Anderson, Brett Greenman
  */
