@@ -4,6 +4,7 @@ import java.net.*;
 import java.util.Arrays;
 import java.util.Scanner;
 import java.io.BufferedReader;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /*
 CIS 457
@@ -16,11 +17,14 @@ class Client{
 	//Main method that starts the client. 
 	static DatagramSocket socket;
 	static String message;
-	static ArrayList<Pair> packetList;
+	static CopyOnWriteArrayList<Pair> packetList;
 	static Integer packetCount;
 	static boolean endOfFile;
 	static OutputStream fileOut;
 	static File file;
+	static boolean suspend1;
+	static boolean suspend2;
+	static int maxPackets;
 	public static void main(String args[]) throws Exception{
 		//Prompt user for ip address
 		String ip_address, port;
@@ -51,9 +55,12 @@ class Client{
 			System.out.println("err1" + e.getStackTrace());
 		}
 
-		packetList = new ArrayList<Pair>();
+		packetList = new CopyOnWriteArrayList<Pair>();
 		packetCount = 0;
 		endOfFile = false;
+		suspend1 = false;
+		suspend2 = true;
+		maxPackets = 1000;
 		file = new File ("Data/" + message);
 		fileOut = new FileOutputStream(file);
 
@@ -63,23 +70,38 @@ class Client{
 				System.out.println("Receive Thread Running");
 				try{
 					while(socket.isConnected()){
-						byte[] receiveData = new byte[1024];
-						DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-						socket.receive(receivePacket);
-						
-						int key = byteArrayToInt(Arrays.copyOfRange(receivePacket.getData(), 0, 4));
-						byte[] val = Arrays.copyOfRange(receivePacket.getData(), 4, receivePacket.getData().length);
+						while(suspend1) {
+							//System.out.println("Receive Thread Sleeping");
+							Thread.sleep(300);
+						}
 
-						packetList.add(new Pair(key, val));
-
-						byte[] sendData = new String("Packet Received").getBytes();
-						DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length);
-						socket.send(sendPacket);
-
-						if(new String(receivePacket.getData()).equals("-EOF-")) {
-							System.out.println(new String(receivePacket.getData()));
-							System.out.println("End Of File");
-							endOfFile = true;
+						if(packetList.size() <= maxPackets) {
+							//System.out.println("Receiving");
+							byte[] receiveData = new byte[1024];
+							DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+							socket.receive(receivePacket);
+							
+							int key = byteArrayToInt(Arrays.copyOfRange(receivePacket.getData(), 0, 4));
+							byte[] val = Arrays.copyOfRange(receivePacket.getData(), 4, receivePacket.getData().length);
+							
+							if(new String(receivePacket.getData()).trim().equals("-EOF-")) {
+								//System.out.println(new String(receivePacket.getData()));
+								//System.out.println("End Of File");
+								endOfFile = true;
+								suspend1 = true;
+								suspend2 = false;
+							}else {
+								packetList.add(new Pair(key, val));
+							}
+							
+							
+							byte[] sendData = new String("Packet Received").getBytes();
+							DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length);
+							socket.send(sendPacket);
+							
+						} else {
+							suspend1 = true;
+							suspend2 = false;
 						}
 					}
 				} 
@@ -95,22 +117,50 @@ class Client{
 				int currentPacket = 1;
 				try{
 					while(!endOfFile || packetList.size() > 0) {
-						for(int i = 0; i < packetList.size(); i++) {
-							Pair temp = packetList.get(i);
-							if(temp != null && temp.getKey() == currentPacket) {
-								byte[] data = packetList.get(i).getValue();
-								fileOut.write(data);
-								packetList.remove(i);
-								currentPacket++;
-							}
+						while(suspend2) {
+							//System.out.println("Write Thread Sleeping");
+							Thread.sleep(300);
 						}
-						if(endOfFile) {
+						if(endOfFile && packetList.size() == 0) {
 							break;
+						}
+						//System.out.println(packetList.size() + ", " + currentPacket + ", " + packetList.get(0).getKey());
+						int tempCount = currentPacket;
+						if(packetList.size() > 700 || endOfFile) {
+							for(int i = 0; i < packetList.size(); i++) {
+								Pair temp = packetList.get(i);
+								if(temp != null && temp.getKey() == currentPacket) {
+									byte[] data = packetList.get(i).getValue();
+									fileOut.write(data);
+
+									packetList.remove(i);
+									
+									currentPacket++;
+								}
+							}
+							if(tempCount == currentPacket && !endOfFile) {
+								//System.out.println("Sleep 1, " + tempCount + ", " + packetCount);
+								maxPackets += 1000;
+								suspend2 = true;
+								suspend1 = false;	
+							}
+							if(tempCount == currentPacket && endOfFile && packetList.size() == 0) {
+								break;
+							}
+							
+						} else {
+							if(!endOfFile) {
+								//System.out.println("Sleep 2");
+								maxPackets = 1000;
+								suspend2 = true;
+								suspend1 = false;	
+							}													
 						}
 					}	
 				} 
 				catch (Exception e){
-					e.printStackTrace();	    
+					e.printStackTrace();	 
+					System.exit(0);
 				}
 			}
 		};
@@ -119,8 +169,7 @@ class Client{
 		writeThread.start();
 
 		while(true) {
-			//System.out.println(endOfFile);
-			if(endOfFile) {
+			if(endOfFile && packetList.size() == 0) {
 				System.out.println("File closed");
 				fileOut.close();
 				System.exit(0);
@@ -128,6 +177,22 @@ class Client{
 			}
 		}
 
+	}
+
+	void suspend1() {
+		suspend1 = true;
+	}
+	synchronized void resume1() {
+	  	suspend1 = false;
+	   	notify();
+	}
+
+	void suspend2() {
+		suspend2 = true;
+	}
+	synchronized void resume2() {
+	  	suspend2 = false;
+	   	notify();
 	}
 	
 	/*
